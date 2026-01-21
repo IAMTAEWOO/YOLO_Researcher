@@ -15,7 +15,7 @@ from gpiozero import (
     Button,
 )
 
-# ── 핀/설정 ─────────────────────────────────────────────
+# ===================== GPIO PIN ASSIGNMENT =====================
 PIR_PIN = 17
 LED_PIN = 27
 BUZZER_PIN = 22
@@ -26,16 +26,12 @@ US_ECHO_PIN = 24
 SERVO_PIN = 18
 BUTTON_PIN = 5
 
+# ===================== YOLO CONFIGURATION ======================
 IMG_W, IMG_H = 1280, 720
 CONF_THRES = 0.3
 IOU_THRES = 0.5
 
-# 전처리 파라미터
-BRIGHTNESS = 1.2
-SATURATION = 1.5
-CONTRAST = 1.2
-
-# 라벨 우선순위
+# ===================== DETECTION POLICY ========================
 PERSON_LABELS = {"person"}
 OBJECT_LABELS = {
     "bottle",
@@ -46,19 +42,20 @@ OBJECT_LABELS = {
     "book",
 }
 
+# ===================== LOG / OUTPUT ============================
 LOG_PATH = Path("events_ultra_pir_servo.csv")
 IMG_SAVE_PATH = Path("last_detect_ultra_pir_servo.jpg")
 
-# 초음파 감지 임계값 (m)
-ULTRA_THRESHOLD = 0.6
+# ===================== SENSOR THRESHOLDS =======================
+ULTRA_THRESHOLD = 0.6  # meters
 
-# 서보 설정
+# ===================== SERVO PARAMETERS ========================
 SERVO_CLOSED_POS = -0.8
 SERVO_OPEN_POS = 0.0
 SERVO_HOLD_TIME = 5.0
 
 
-# ── 유틸 함수 ──────────────────────────────────────────
+# ===================== UTILITY FUNCTIONS =======================
 def init_camera():
     picam2 = Picamera2()
     picam2.preview_configuration.main.size = (IMG_W, IMG_H)
@@ -79,7 +76,7 @@ def init_logger(path: Path):
     f = path.open("a", newline="", encoding="utf-8")
     writer = csv.writer(f)
     if new_file:
-        writer.writerow(["timestamp", "trigger", "labels", "count", "note"])
+        writer.writerow(["timestamp", "trigger", "labels", "count", "mode"])
     return f, writer
 
 
@@ -94,10 +91,10 @@ def beep_times(buzzer, n=3, on=0.1, off=0.1):
 def servo_move_and_detach(servo, pos, move_time=0.8):
     servo.value = pos
     time.sleep(move_time)
-    servo.value = None
+    servo.value = None  # PWM off to suppress vibration
 
 
-# ── 메인 ───────────────────────────────────────────────
+# ===================== MAIN CONTROL LOOP =======================
 def main():
     pir = MotionSensor(PIR_PIN)
     led = LED(LED_PIN)
@@ -126,6 +123,7 @@ def main():
 
     prev_pir_motion = False
     prev_ultra_trigger = False
+
     led_mode = "off"
     led_state = False
     last_led_toggle_time = 0.0
@@ -141,6 +139,7 @@ def main():
             now = time.time()
 
             pir_motion = pir.motion_detected
+
             try:
                 dist = ultra.distance
             except Exception:
@@ -166,9 +165,10 @@ def main():
                     iou=IOU_THRES,
                     verbose=False,
                 )
-                r = results[0]
 
+                r = results[0]
                 labels = []
+
                 if r.boxes is not None:
                     for cls in r.boxes.cls.int().tolist():
                         labels.append(r.names[int(cls)])
@@ -199,11 +199,7 @@ def main():
                 last_led_toggle_time = now
 
             if led_mode in ("person", "object"):
-                interval = (
-                    PERSON_BLINK_INTERVAL
-                    if led_mode == "person"
-                    else OBJECT_BLINK_INTERVAL
-                )
+                interval = PERSON_BLINK_INTERVAL if led_mode == "person" else OBJECT_BLINK_INTERVAL
                 if now - last_led_toggle_time >= interval:
                     led_state = not led_state
                     led.value = led_state
