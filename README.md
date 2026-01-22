@@ -41,7 +41,6 @@ YOLOv8 객체 인식 모델과 다중 센서 트리거를 결합하여
 - Buzzer
 - Push Button
 
-모든 GPIO는 3.3V 기준으로 구성하였다.
 
 ---
 
