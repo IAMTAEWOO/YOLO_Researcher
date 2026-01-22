@@ -1,0 +1,6 @@
+```text
+opencv-python
+ultralytics
+gpiozero
+picamera2
+numpy
